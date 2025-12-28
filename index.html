@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeLink — Connect Your Vibe</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{margin:0;background:#F4F5F8;color:#222}
+.hidden{display:none}
+
+/* BRAND */
+:root{
+ --purple:#5B2EFF;
+ --orange:#FF6F3C;
+ --radius:18px;
+}
+
+/* TOP BAR */
+header{
+ background:var(--purple);
+ color:#fff;
+ padding:15px 20px;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+}
+header h1{margin:0;font-size:22px}
+header span{cursor:pointer;margin-left:15px}
+
+/* NAV */
+nav{
+ position:fixed;
+ bottom:0;left:0;width:100%;
+ background:#fff;
+ display:flex;
+ justify-content:space-around;
+ padding:10px 0;
+ box-shadow:0 -5px 15px rgba(0,0,0,.1)
+}
+nav span{font-size:14px;cursor:pointer}
+
+/* MAIN */
+main{padding:20px 20px 90px;max-width:900px;margin:auto}
+
+/* CARD */
+.card{
+ background:#fff;
+ padding:15px;
+ border-radius:var(--radius);
+ margin-bottom:20px;
+ box-shadow:0 5px 15px rgba(0,0,0,.08)
+}
+
+/* BUTTON */
+button{
+ background:var(--purple);
+ color:#fff;
+ border:none;
+ padding:10px 16px;
+ border-radius:20px;
+ cursor:pointer;
+ font-weight:600
+}
+button.orange{background:var(--orange)}
+button.red{background:#FF3B3B}
+
+/* INPUT */
+input,textarea{
+ width:100%;
+ padding:10px;
+ border-radius:14px;
+ border:1px solid #ddd;
+ margin-top:8px
+}
+
+/* VIDEO */
+video{width:100%;border-radius:14px;margin-top:10px}
+
+/* CHAT */
+#messages{height:250px;overflow:auto;border:1px solid #ddd;padding:10px;border-radius:14px}
+
+/* NOTIFICATION */
+#notiBox{
+ position:fixed;
+ top:70px;right:20px;
+ background:#fff;
+ padding:15px;
+ border-radius:18px;
+ width:280px;
+ box-shadow:0 10px 30px rgba(0,0,0,.2)
+}
+</style>
+</head>
+
+<body>
+
+<header>
+ <h1>VibeLink</h1>
+ <div>
+  <span onclick="toggleNoti()">🔔 <b id="notiCount">0</b></span>
+  <span onclick="openAdmin()">🛡️</span>
+ </div>
+</header>
+
+<div id="notiBox" class="hidden">
+ <h4>Notifications</h4>
+ <div id="notiList"></div>
+</div>
+
+<main>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="card">
+ <h2>🔥 Feed</h2>
+ <div id="feed"></div>
+</div>
+
+<!-- CREATE -->
+<div id="create" class="card hidden">
+ <h2>🎬 Create</h2>
+ <input type="file" id="videoFile" accept="video/*">
+ <textarea id="caption" placeholder="What's your vibe?"></textarea>
+ <button onclick="postVideo()">Post</button>
+</div>
+
+<!-- CHAT -->
+<div id="chat" class="card hidden">
+ <h2>💬 Chat</h2>
+ <div id="messages"></div>
+ <input id="msgInput" placeholder="Type message...">
+ <button onclick="sendMsg()">Send</button>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="card hidden">
+ <h2>⚙️ Settings</h2>
+ <button onclick="showPolicy()">Privacy Policy</button>
+ <br><br>
+ <h3 style="color:#FF3B3B">Danger Zone</h3>
+ <button class="red" onclick="deleteAccount()">Delete Account</button>
+</div>
+
+<!-- PRIVACY -->
+<div id="policy" class="card hidden">
+ <h2>🔐 Privacy Policy</h2>
+ <p>
+ VibeLink respects your privacy. We collect only necessary data to provide
+ video sharing, messaging, and social features. We do not sell personal data.
+ Content moderation and reports are used to keep the community safe.
+ </p>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="card hidden">
+ <h2>🛡️ Admin Panel</h2>
+ <div id="reports"></div>
+</div>
+
+</main>
+
+<nav>
+ <span onclick="show('dashboard')">🏠 Home</span>
+ <span onclick="show('create')">➕ Create</span>
+ <span onclick="show('chat')">💬 Chat</span>
+ <span onclick="show('settings')">⚙️</span>
+</nav>
+
+<script>
+let posts=[];
+let messages=[];
+let notifications=[];
+let reports=[];
+
+/* NAV */
+function show(id){
+ document.querySelectorAll("main .card").forEach(c=>c.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
+/* VIDEO POST */
+function postVideo(){
+ let file=document.getElementById("videoFile").files[0];
+ let cap=document.getElementById("caption").value;
+ if(!file)return alert("Select video");
+
+ let url=URL.createObjectURL(file);
+ posts.unshift({video:url,caption:cap});
+ renderFeed();
+ notify("Your video was posted 🎉");
+}
+
+/* FEED */
+function renderFeed(){
+ let feed=document.getElementById("feed");
+ feed.innerHTML="";
+ posts.forEach(p=>{
+  feed.innerHTML+=`
+   <div class="card">
+    <b>@creator</b>
+    <video src="${p.video}" controls></video>
+    <p>${p.caption}</p>
+    <button class="orange" onclick="notify('Someone followed you 👋')">➕ Follow</button>
+    <button onclick="report()">🚩 Report</button>
+   </div>`;
+ });
+}
+
+/* CHAT */
+function sendMsg(){
+ let t=document.getElementById("msgInput").value;
+ if(!t)return;
+ messages.push(t);
+ document.getElementById("messages").innerHTML+=`<p>💬 ${t}</p>`;
+ document.getElementById("msgInput").value="";
+ notify("New message 💬");
+}
+
+/* NOTIFICATIONS */
+function notify(text){
+ notifications.unshift(text);
+ document.getElementById("notiCount").innerText=notifications.length;
+ renderNoti();
+}
+function toggleNoti(){
+ document.getElementById("notiBox").classList.toggle("hidden");
+}
+function renderNoti(){
+ let list=document.getElementById("notiList");
+ list.innerHTML="";
+ notifications.forEach(n=>list.innerHTML+=`<p>🔔 ${n}</p>`);
+}
+
+/* REPORT */
+function report(){
+ reports.push("Reported content");
+ alert("Reported 🚩");
+ renderReports();
+}
+function renderReports(){
+ let r=document.getElementById("reports");
+ r.innerHTML="";
+ reports.forEach(rep=>r.innerHTML+=`<p>${rep}</p>`);
+}
+
+/* ADMIN */
+function openAdmin(){show("admin")}
+
+/* SETTINGS */
+function showPolicy(){show("policy")}
+function deleteAccount(){
+ if(confirm("Delete account?")){
+  posts=[];messages=[];notifications=[];
+  renderFeed();
+  alert("Account deleted");
+ }
+}
+</script>
+
+</body>
+  </html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeLink — Connect Your Vibe</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{margin:0;background:#F4F5F8;color:#222}
+.hidden{display:none}
+
+/* BRAND */
+:root{
+ --purple:#5B2EFF;
+ --orange:#FF6F3C;
+ --radius:18px;
+}
+
+/* TOP BAR */
+header{
+ background:var(--purple);
+ color:#fff;
+ padding:15px 20px;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+}
+header h1{margin:0;font-size:22px}
+header span{cursor:pointer;margin-left:15px}
+
+/* NAV */
+nav{
+ position:fixed;
+ bottom:0;left:0;width:100%;
+ background:#fff;
+ display:flex;
+ justify-content:space-around;
+ padding:10px 0;
+ box-shadow:0 -5px 15px rgba(0,0,0,.1)
+}
+nav span{font-size:14px;cursor:pointer}
+
+/* MAIN */
+main{padding:20px 20px 90px;max-width:900px;margin:auto}
+
+/* CARD */
+.card{
+ background:#fff;
+ padding:15px;
+ border-radius:var(--radius);
+ margin-bottom:20px;
+ box-shadow:0 5px 15px rgba(0,0,0,.08)
+}
+
+/* BUTTON */
+button{
+ background:var(--purple);
+ color:#fff;
+ border:none;
+ padding:10px 16px;
+ border-radius:20px;
+ cursor:pointer;
+ font-weight:600
+}
+button.orange{background:var(--orange)}
+button.red{background:#FF3B3B}
+
+/* INPUT */
+input,textarea{
+ width:100%;
+ padding:10px;
+ border-radius:14px;
+ border:1px solid #ddd;
+ margin-top:8px
+}
+
+/* VIDEO */
+video{width:100%;border-radius:14px;margin-top:10px}
+
+/* CHAT */
+#messages{height:250px;overflow:auto;border:1px solid #ddd;padding:10px;border-radius:14px}
+
+/* NOTIFICATION */
+#notiBox{
+ position:fixed;
+ top:70px;right:20px;
+ background:#fff;
+ padding:15px;
+ border-radius:18px;
+ width:280px;
+ box-shadow:0 10px 30px rgba(0,0,0,.2)
+}
+</style>
+</head>
+
+<body>
+
+<header>
+ <h1>VibeLink</h1>
+ <div>
+  <span onclick="toggleNoti()">🔔 <b id="notiCount">0</b></span>
+  <span onclick="openAdmin()">🛡️</span>
+ </div>
+</header>
+
+<div id="notiBox" class="hidden">
+ <h4>Notifications</h4>
+ <div id="notiList"></div>
+</div>
+
+<main>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="card">
+ <h2>🔥 Feed</h2>
+ <div id="feed"></div>
+</div>
+
+<!-- CREATE -->
+<div id="create" class="card hidden">
+ <h2>🎬 Create</h2>
+ <input type="file" id="videoFile" accept="video/*">
+ <textarea id="caption" placeholder="What's your vibe?"></textarea>
+ <button onclick="postVideo()">Post</button>
+</div>
+
+<!-- CHAT -->
+<div id="chat" class="card hidden">
+ <h2>💬 Chat</h2>
+ <div id="messages"></div>
+ <input id="msgInput" placeholder="Type message...">
+ <button onclick="sendMsg()">Send</button>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="card hidden">
+ <h2>⚙️ Settings</h2>
+ <button onclick="showPolicy()">Privacy Policy</button>
+ <br><br>
+ <h3 style="color:#FF3B3B">Danger Zone</h3>
+ <button class="red" onclick="deleteAccount()">Delete Account</button>
+</div>
+
+<!-- PRIVACY -->
+<div id="policy" class="card hidden">
+ <h2>🔐 Privacy Policy</h2>
+ <p>
+ VibeLink respects your privacy. We collect only necessary data to provide
+ video sharing, messaging, and social features. We do not sell personal data.
+ Content moderation and reports are used to keep the community safe.
+ </p>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="card hidden">
+ <h2>🛡️ Admin Panel</h2>
+ <div id="reports"></div>
+</div>
+
+</main>
+
+<nav>
+ <span onclick="show('dashboard')">🏠 Home</span>
+ <span onclick="show('create')">➕ Create</span>
+ <span onclick="show('chat')">💬 Chat</span>
+ <span onclick="show('settings')">⚙️</span>
+</nav>
+
+<script>
+let posts=[];
+let messages=[];
+let notifications=[];
+let reports=[];
+
+/* NAV */
+function show(id){
+ document.querySelectorAll("main .card").forEach(c=>c.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
+/* VIDEO POST */
+function postVideo(){
+ let file=document.getElementById("videoFile").files[0];
+ let cap=document.getElementById("caption").value;
+ if(!file)return alert("Select video");
+
+ let url=URL.createObjectURL(file);
+ posts.unshift({video:url,caption:cap});
+ renderFeed();
+ notify("Your video was posted 🎉");
+}
+
+/* FEED */
+function renderFeed(){
+ let feed=document.getElementById("feed");
+ feed.innerHTML="";
+ posts.forEach(p=>{
+  feed.innerHTML+=`
+   <div class="card">
+    <b>@creator</b>
+    <video src="${p.video}" controls></video>
+    <p>${p.caption}</p>
+    <button class="orange" onclick="notify('Someone followed you 👋')">➕ Follow</button>
+    <button onclick="report()">🚩 Report</button>
+   </div>`;
+ });
+}
+
+/* CHAT */
+function sendMsg(){
+ let t=document.getElementById("msgInput").value;
+ if(!t)return;
+ messages.push(t);
+ document.getElementById("messages").innerHTML+=`<p>💬 ${t}</p>`;
+ document.getElementById("msgInput").value="";
+ notify("New message 💬");
+}
+
+/* NOTIFICATIONS */
+function notify(text){
+ notifications.unshift(text);
+ document.getElementById("notiCount").innerText=notifications.length;
+ renderNoti();
+}
+function toggleNoti(){
+ document.getElementById("notiBox").classList.toggle("hidden");
+}
+function renderNoti(){
+ let list=document.getElementById("notiList");
+ list.innerHTML="";
+ notifications.forEach(n=>list.innerHTML+=`<p>🔔 ${n}</p>`);
+}
+
+/* REPORT */
+function report(){
+ reports.push("Reported content");
+ alert("Reported 🚩");
+ renderReports();
+}
+function renderReports(){
+ let r=document.getElementById("reports");
+ r.innerHTML="";
+ reports.forEach(rep=>r.innerHTML+=`<p>${rep}</p>`);
+}
+
+/* ADMIN */
+function openAdmin(){show("admin")}
+
+/* SETTINGS */
+function showPolicy(){show("policy")}
+function deleteAccount(){
+ if(confirm("Delete account?")){
+  posts=[];messages=[];notifications=[];
+  renderFeed();
+  alert("Account deleted");
+ }
+}
+</script>
+
+</body>
+  </html>
